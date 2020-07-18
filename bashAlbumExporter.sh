@@ -10,34 +10,28 @@ imageFilename=$3
 fullAlbumOption=$4
 removeUpTo_char=$5
 removeUpTo_offset=$6
+prepend=$7
 declare -a filenames=()
 
 echo "Welcome to Martin's audio exporter."
-echo "format = $./script.sh filePath audioInputFormat imageFilename fullAlbumOption removeUpTo_char removeUpTo_offset"
+echo "format = $./script.sh filePath audioInputFormat imageFilename fullAlbumOption removeUpTo_char removeUpTo_offset prepend"
 
-#echo "filePath = $filePath"
+#echo "filePath = $filePath
 #echo "audioInputFormat = $audioInputFormat"
 
 # ~ functions ~ #
 
 function render {
-  
   # $1 = audioInputFormat
   # $2 = filePath
   # $3 = imageFilename
   # $4 = input filename
   # $5 = outputFilename
 
-  if [[ "$1" = *mp3 ]]; then
-    echo "individual render, audioInputFormat ends with mp3"        
-    ffmpeg -loop 1 -framerate 2 -i "$2/$3" -i "$2/$4" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p "$2/$5.mp4"          
-  
-  elif [[ "$1" == *flac ]]; then
-    echo "individual render, audioInputFormat ends with flac"
-    ffmpeg -loop 1 -framerate 2 -i "$2/$3" -i "$2/$4" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p -strict -2 "$2/$5.mp4"
-
+  if [[ "$1" = *mp3 || "$1" = *flac ]]; then
+    ffmpeg -hide_banner -loglevel panic -loop 1 -framerate 2 -i "$2/$3" -i "$2/$4" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p -strict -2 "$2/$5.mp4"          
   else
-    echo "audioInputFormat ends with something unrecognized"
+    echo "audioInputFormat ends with something unrecognized, options: 'mp3', 'flac'"
   fi
 }
 
@@ -80,6 +74,11 @@ function individualRender {
         #remove as many characters from the start of the filename as specified in this int: removeUpTo_offset
         outputFilename="${outputFilename:$removeUpTo_offset}"
         echo "  removeUpTo_offset  was found, outputFilename = $outputFilename"
+      fi
+
+      #add prepend to the front of the filename if present, e.g. artist name
+      if [[ "$prepend" ]]; then
+        outputFilename="${prepend} - ${outputFilename}"
       fi
 
       #format outputFilename based on removeUpTo_offset (will do nothing if removeUpTo_offset = 0 )
@@ -135,17 +134,16 @@ function fullAlbum {
     #echo "concatString = $concatString"
 
     #concatenate all audio files into one long audio file
-    ffmpeg -i "$concatString" -acodec copy $filePath/concatAudio.mp3         
+    ffmpeg -hide_banner -loglevel panic -i "$concatString" -acodec copy $filePath/concatAudio.mp3         
 
     #render video using the long full album audio file
-    ffmpeg -loop 1 -framerate 2 -i "$filePath/$imageFilename" -i "$filePath/concatAudio.mp3" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p "$filePath/fullAlbum.mp4" 
+    ffmpeg -hide_banner -loglevel panic -loop 1 -framerate 2 -i "$filePath/$imageFilename" -i "$filePath/concatAudio.mp3" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p "$filePath/fullAlbum.mp4" 
 
     rm "$filePath/concatAudio.mp3"
 
   elif [[ "$audioInputFormat" == *flac ]]; then
     echo "concatAudio; audioInputFormat ends with flac"
     
-    # build concatenated mp3 file using bash arrays and concat filter_complex
     files=()
     i=0
     for f in $filePath/*.flac; 
@@ -154,10 +152,10 @@ function fullAlbum {
         files+=(-i "$f")
     done
     filter+="concat=n=$i:v=0:a=1[outa]"
-    ffmpeg "${files[@]}" -filter_complex "$filter" -map '[outa]' "$filePath/concatAudio.mp3"
+    ffmpeg -hide_banner -loglevel panic "${files[@]}" -filter_complex "$filter" -map '[outa]' "$filePath/concatAudio.mp3"
 
     #render full album vid
-    ffmpeg -loop 1 -framerate 2 -i "$filePath/$imageFilename" -i "$filePath/concatAudio.mp3" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p -strict -2 "$filePath/fullAlbum.mp4" 
+    ffmpeg -hide_banner -loglevel panic -loop 1 -framerate 2 -i "$filePath/$imageFilename" -i "$filePath/concatAudio.mp3" -vf "scale=2*trunc(iw/2):2*trunc(ih/2),setsar=1" -c:v libx264 -preset medium -tune stillimage -crf 18 -c:a copy -shortest -pix_fmt yuv420p -strict -2 "$filePath/fullAlbum.mp4" 
 
     rm "$filePath/concatAudio.mp3"
 
